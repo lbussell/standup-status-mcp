@@ -4,4 +4,8 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GitHub\StandupStatus.GitHub.csproj" />
+  </ItemGroup>
+
 </Project>
