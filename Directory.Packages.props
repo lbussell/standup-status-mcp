@@ -1,4 +1,8 @@
 <Project>
   <ItemGroup>
   </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="ModelContextProtocol" Version="0.1.0-preview.4" />
+    <PackageVersion Include="Octokit" Version="14.0.0" />
+  </ItemGroup>
 </Project>
