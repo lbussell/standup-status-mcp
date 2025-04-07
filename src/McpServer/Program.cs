@@ -1,28 +1,23 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using GitHub;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using StandupStatus.McpServer.GitHub;
-using StandupStatus.McpServer.Tools;
+using StandupStatus.McpServer.Tools.GitHub;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddMcpServer()
-    .WithStdioServerTransport()
-    .WithTools<GitHubEventsTool>();
-
+// Configure logging
 builder.Logging.AddConsole(options =>
 {
     options.LogToStandardErrorThreshold = LogLevel.Trace;
 });
 
-// Add GitHub client
-builder.Services.AddSingleton(_ =>
-{
-    string githubToken = Environment.GetEnvironmentVariable("GITHUB_TOKEN")
-        ?? throw new InvalidOperationException("Please set GITHUB_TOKEN environment variable.");
+builder.Services.AddSingleton<GitHubClient>(_ => GitHubClientFactory.Create());
+builder.Services.AddSingleton<GitHubClientForMcp>();
 
-    var githubClient = GitHubHelper.CreateClient(githubToken);
-    return githubClient;
-});
+// Add MCP Server
+builder.Services.AddMcpServer()
+    .WithStdioServerTransport()
+    .WithTools<GitHubEventsTool>();
 
 await builder.Build().RunAsync();
