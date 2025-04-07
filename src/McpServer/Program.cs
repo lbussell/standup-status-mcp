@@ -18,6 +18,6 @@ builder.Services.AddSingleton<GitHubClientForMcp>();
 // Add MCP Server
 builder.Services.AddMcpServer()
     .WithStdioServerTransport()
-    .WithTools<GitHubEventsTool>();
+    .WithTools<GitHubClientForMcp>();
 
 await builder.Build().RunAsync();
