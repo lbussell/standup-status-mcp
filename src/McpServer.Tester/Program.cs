@@ -1,12 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using StandupStatus.McpServer.Tools.GitHub;
 
-// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
-
 var services = new ServiceCollection();
 
-services.AddSingleton(_ => GitHubClientFactory.Create(null));
+services.AddSingleton(_ => GitHubClientFactory.Create("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"));
 services.AddSingleton<GitHubClientForMcp>();
 services.AddSingleton<GitHubEventsTool>();
 
@@ -16,11 +13,11 @@ GitHubEventsTool? tool = serviceProvider.GetService<GitHubEventsTool>()
     ?? throw new InvalidOperationException(
         $"Failed to resolve {nameof(GitHubEventsTool)}");
 
-// Get yesterday at 1 PM Pacific Time
-var pacificTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+// Get yesterday at 1 PM LOCAL time - our API now handles the conversion to UTC internally
 var yesterday = DateTime.Now.AddDays(-1);
-var yesterdayAt1PM = new DateTime(yesterday.Year, yesterday.Month, yesterday.Day, 13, 0, 0);
-var yesterdayAt1PMPacific = TimeZoneInfo.ConvertTimeToUtc(yesterdayAt1PM, pacificTimeZone);
+var yesterdayAt1PM = new DateTime(yesterday.Year, yesterday.Month, yesterday.Day, 13, 0, 0, DateTimeKind.Local);
+Console.WriteLine($"Getting events since {yesterdayAt1PM}");
 
-var activitySummary = await tool.GetUserActivity(since: yesterdayAt1PMPacific);
+// Pass local time directly - the API will handle conversion to UTC when needed
+var activitySummary = await tool.GetUserActivity(since: yesterdayAt1PM);
 Console.WriteLine(activitySummary);

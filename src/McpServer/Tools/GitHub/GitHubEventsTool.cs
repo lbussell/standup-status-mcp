@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Text;
 using Humanizer;
 using ModelContextProtocol.Server;
@@ -15,16 +16,22 @@ public class GitHubEventsTool(GitHubClientForMcp client)
     [McpServerTool(Name = "GetUserActivity")]
     [Description("Get the current user's recent activity on GitHub")]
     public async Task<string> GetUserActivity(
-        [Description("Get events since this date (optional)")]
+        [Description("Get events since this date in local time (optional)")]
         DateTime? since = null)
     {
+        // Ensure the input DateTime has the correct Kind value (Local) if provided
+        if (since.HasValue && since.Value.Kind == DateTimeKind.Unspecified)
+        {
+            since = DateTime.SpecifyKind(since.Value, DateTimeKind.Local);
+        }
+
         IEnumerable<Activity> gitHubEvents =
             await _client.GetRecentActivityAsync(since);
 
         if (!gitHubEvents.Any())
         {
             return since.HasValue
-                ? $"No GitHub activity found since {since.Value.Humanize()}."
+                ? $"No GitHub activity found since {Format(since.Value)}."
                 : "No recent GitHub activity found.";
         }
 
@@ -33,59 +40,26 @@ public class GitHubEventsTool(GitHubClientForMcp client)
         // Add summary header with time frame information
         if (since.HasValue)
         {
-            output.AppendLine($"## GitHub Activity since {since.Value.Humanize()}");
+            output.AppendLine($"# GitHub Activity since {Format(since.Value)}");
         }
         else
         {
-            output.AppendLine("## Recent GitHub Activity");
+            output.AppendLine("# Recent GitHub Activity");
         }
         output.AppendLine();
 
-        // Group events by repository for better organization
-        var eventsByRepo = gitHubEvents
-            .GroupBy(e => e.Repo.Name)
-            .OrderBy(g => g.Key);
-
-        foreach (var repoGroup in eventsByRepo)
+        // Format events by type
+        foreach (var gitHubEvent in gitHubEvents)
         {
-            output.AppendLine($"### {repoGroup.Key}");
-
-            // Group events by type within each repository
-            var eventsByType = repoGroup
-                .GroupBy(e => e.Type)
-                .OrderByDescending(g => g.Max(e => e.CreatedAt));
-
-            foreach (var typeGroup in eventsByType)
-            {
-                // Format events by type
-                FormatEventsByType(output, typeGroup.Key, typeGroup.OrderByDescending(e => e.CreatedAt));
-            }
-
+            string description = GetEventDescription(gitHubEvent);
+            output.AppendLine($"## {description} ({Format(gitHubEvent.CreatedAt)})");
             output.AppendLine();
         }
-
-        // Add a summary count
-        output.AppendLine($"**Total: {gitHubEvents.Count()} event{(gitHubEvents.Count() != 1 ? "s" : "")}**");
 
         return output.ToString();
     }
 
-    private void FormatEventsByType(StringBuilder sb, string eventType, IEnumerable<Activity> events)
-    {
-        // Create a human-readable heading for this event type
-        var typeName = eventType.Humanize(LetterCasing.Title);
-        sb.AppendLine($"#### {typeName} ({events.Count()})");
-
-        foreach (var evt in events)
-        {
-            string description = GetEventDescription(evt);
-            sb.AppendLine($"- {description} ({evt.CreatedAt.Humanize()})");
-        }
-
-        sb.AppendLine();
-    }
-
-    private string GetEventDescription(Activity evt)
+    private static string GetEventDescription(Activity evt)
     {
         // Different event types could be handled differently for more detailed descriptions
         switch (evt.Type)
@@ -99,7 +73,7 @@ public class GitHubEventsTool(GitHubClientForMcp client)
                     var commitText = "commit".ToQuantity(commitCount);
 
                     var branchText = !string.IsNullOrEmpty(branchRef)
-                        ? $" to '{branchRef}'"
+                        ? $" to branch '{branchRef}'"
                         : "";
 
                     var messageText = "";
@@ -109,7 +83,7 @@ public class GitHubEventsTool(GitHubClientForMcp client)
                         sb.AppendLine($": ");
                         foreach (var commit in pushPayload.Commits)
                         {
-                            sb.AppendLine($"  - \"{commit.Message.Split('\n')[0]}\"");
+                            sb.AppendLine($"- \"{commit.Message.Split('\n')[0]}\"");
                         }
                         messageText = sb.ToString();
                     }
@@ -156,6 +130,7 @@ public class GitHubEventsTool(GitHubClientForMcp client)
 
                     return $"""
                         {action.Humanize(LetterCasing.Title)} issue '{issueTitle}' ({evt.Repo.Name}#{issueNumber})
+
                         {issueBody}
                         """;
                 }
@@ -176,6 +151,7 @@ public class GitHubEventsTool(GitHubClientForMcp client)
                     return
                         $"""
                         {action.Humanize(LetterCasing.Title)} comment on {itemType} '{issueTitle}' ({evt.Repo.Name}#{issueNumber})
+
                         "{commentBody}"
                         """;
                 }
@@ -193,5 +169,21 @@ public class GitHubEventsTool(GitHubClientForMcp client)
             default:
                 return $"{evt.Type.Humanize(LetterCasing.Sentence)} on {evt.Repo.Name}";
         }
+    }
+
+    private static string Format(DateTime dateTime)
+    {
+        // Convert to local time if not already and format with pattern
+        DateTime localTime = dateTime.Kind == DateTimeKind.Utc
+            ? dateTime.ToLocalTime()
+            : dateTime;
+
+        return localTime.ToString("g", CultureInfo.CurrentCulture);
+    }
+
+    private static string Format(DateTimeOffset dateTimeOffset)
+    {
+        // Convert to local time and format consistently
+        return dateTimeOffset.ToLocalTime().Humanize(culture: CultureInfo.CurrentCulture);
     }
 }
