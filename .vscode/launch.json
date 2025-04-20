@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "C#: TestMcpClient Debug",
+            "name": "Test Mcp Server",
             "type": "dotnet",
             "request": "launch",
-            "projectPath": "${workspaceFolder}/src/TestMcpClient/StandupStatus.TestMcpClient.csproj"
+            "projectPath": "${workspaceFolder}/src/McpServer.Tester/StandupStatus.McpServer.Tester.csproj"
         }
     ]
 }

@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using Humanizer;
 using ModelContextProtocol.Server;
@@ -88,25 +87,98 @@ public class GitHubEventsTool(GitHubClientForMcp client)
 
     private string GetEventDescription(Activity evt)
     {
-        // The payload is available through the RawPayload property, but
-        // for simplicity, we'll just use the information already available
-
         // Different event types could be handled differently for more detailed descriptions
         switch (evt.Type)
         {
             case "PushEvent":
+                if (evt.Payload is PushEventPayload pushPayload)
+                {
+                    var commitCount = pushPayload.Size;
+                    var branchRef = pushPayload.Ref?.Replace("refs/heads/", "");
+
+                    var commitText = "commit".ToQuantity(commitCount);
+
+                    var branchText = !string.IsNullOrEmpty(branchRef)
+                        ? $" to '{branchRef}'"
+                        : "";
+
+                    var messageText = "";
+                    if (pushPayload.Commits != null && pushPayload.Commits.Any())
+                    {
+                        var sb = new StringBuilder();
+                        sb.AppendLine($": ");
+                        foreach (var commit in pushPayload.Commits)
+                        {
+                            sb.AppendLine($"  - \"{commit.Message.Split('\n')[0]}\"");
+                        }
+                        messageText = sb.ToString();
+                    }
+
+                    return $"Pushed {commitText}{branchText} in {evt.Repo.Name}{messageText}";
+                }
                 return $"Pushed to {evt.Repo.Name}";
 
             case "CreateEvent":
+                if (evt.Payload is CreateEventPayload createPayload)
+                {
+                    var refType = createPayload.RefType.ToString();
+                    var refName = !string.IsNullOrEmpty(createPayload.Ref)
+                        ? $" '{createPayload.Ref}'"
+                        : "";
+
+                    return $"Created {refType}{refName} in {evt.Repo.Name}";
+                }
                 return $"Created {evt.Repo.Name}";
 
             case "PullRequestEvent":
+                if (evt.Payload is PullRequestEventPayload payload)
+                {
+                    var action = payload.Action;
+                    var prNumber = payload.Number;
+                    var prTitle = payload.PullRequest.Title;
+                    var prBody = payload.PullRequest.Body ?? "";
+
+                    return
+                        $"""
+                        {action.Humanize(LetterCasing.Title)} pull request '{prTitle}' ({evt.Repo.Name}#{prNumber})
+                        {prBody}
+                        """;
+                }
                 return $"Pull request activity on {evt.Repo.Name}";
 
             case "IssuesEvent":
+                if (evt.Payload is IssueEventPayload issuePayload)
+                {
+                    var action = issuePayload.Action ?? "updated";
+                    var issueNumber = issuePayload.Issue.Number;
+                    var issueTitle = issuePayload.Issue.Title;
+                    var issueBody = issuePayload.Issue.Body ?? "";
+
+                    return $"""
+                        {action.Humanize(LetterCasing.Title)} issue '{issueTitle}' ({evt.Repo.Name}#{issueNumber})
+                        {issueBody}
+                        """;
+                }
                 return $"Issue activity on {evt.Repo.Name}";
 
             case "IssueCommentEvent":
+                if (evt.Payload is IssueCommentPayload commentPayload)
+                {
+                    var action = commentPayload.Action;
+                    var issueNumber = commentPayload.Issue.Number;
+                    var issueTitle = commentPayload.Issue.Title;
+                    var commentBody = commentPayload.Comment.Body ?? "";
+
+                    // Determine if it's a PR or issue comment
+                    var isPullRequest = commentPayload.Issue.PullRequest != null;
+                    var itemType = isPullRequest ? "pull request" : "issue";
+
+                    return
+                        $"""
+                        {action.Humanize(LetterCasing.Title)} comment on {itemType} '{issueTitle}' ({evt.Repo.Name}#{issueNumber})
+                        "{commentBody}"
+                        """;
+                }
                 return $"Commented on an issue in {evt.Repo.Name}";
 
             case "WatchEvent":
