@@ -1,7 +1,4 @@
-using GitHub;
-using GitHub.Models;
-using GitHub.Repos.Item;
-using static GitHub.User.UserRequestBuilder;
+using Octokit;
 
 namespace StandupStatus.McpServer.Tools.GitHub;
 
@@ -9,23 +6,22 @@ public class GitHubClientForMcp(GitHubClient innerClient)
 {
     private readonly GitHubClient _client = innerClient;
 
-    public async Task<List<Event>> GetRecentActivityAsync(DateTime? since = null)
+    public async Task<IEnumerable<Activity>> GetRecentActivityAsync(
+        DateTime? since = null)
     {
-        UserGetResponse user = await _client.User.GetAsync()
-            ?? throw new Exception("No user found");
+        var currentUser = await _client.User.Current();
 
-        string userName = user.PublicUser?.Login
-            ?? throw new Exception("Unable to get current user");
+        // By default, fetches the last 30 events or the first page. For more
+        // control (e.g., fetching more pages or handling pagination
+        // explicitly), you might need ApiOptions.
+        IEnumerable<Activity> events =
+            await _client.Activity.Events
+                .GetAllUserPerformed(currentUser.Login);
 
-        List<Event> events = await _client.Users[userName].Events.GetAsync()
-            ?? throw new Exception("Unable to get events for user " + userName);
-
-        // Get events since the specified date
-        if (since is not null)
+        if (since.HasValue)
         {
-            events = events
-                .Where(e => e.CreatedAt >= since)
-                .ToList();
+            // Filter events that occurred after the 'since' date
+            events = events.Where(e => e.CreatedAt > since.Value);
         }
 
         return events;

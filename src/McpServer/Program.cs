@@ -1,7 +1,7 @@
-﻿using GitHub;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Octokit;
 using StandupStatus.McpServer.Tools.GitHub;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -18,6 +18,6 @@ builder.Services.AddSingleton<GitHubClientForMcp>();
 // Add MCP Server
 builder.Services.AddMcpServer()
     .WithStdioServerTransport()
-    .WithTools<GitHubClientForMcp>();
+    .WithTools<GitHubEventsTool>();
 
 await builder.Build().RunAsync();

@@ -1,18 +1,26 @@
-using GitHub;
-using GitHub.Octokit.Client;
-using GitHub.Octokit.Client.Authentication;
+using Octokit;
 
 namespace StandupStatus.McpServer.Tools.GitHub;
 
 public static class GitHubClientFactory
 {
+    private static readonly ProductHeaderValue s_productHeaderValue =
+        new("standup-status-mcp");
+
     public static GitHubClient Create(string? token = null)
     {
-        token = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
-        var tokenProvider = new TokenProvider(token ?? "");
-        var tokenAuthProvider = new TokenAuthProvider(tokenProvider);
-        var requestAdapter = RequestAdapter.Create(tokenAuthProvider);
-        var client = new GitHubClient(requestAdapter);
+        if (string.IsNullOrEmpty(token))
+        {
+            token = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+        }
+
+        var credentials = new Credentials(token);
+
+        var client = new GitHubClient(s_productHeaderValue)
+        {
+            Credentials = credentials,
+        };
+
         return client;
     }
 }

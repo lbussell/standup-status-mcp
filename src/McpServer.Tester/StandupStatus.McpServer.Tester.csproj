@@ -5,10 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\McpServer\StandupStatus.McpServer.csproj" />
   </ItemGroup>
 
