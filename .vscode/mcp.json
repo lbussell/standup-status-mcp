@@ -1,0 +1,24 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "github-token",
+      "description": "GitHub Token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "standup-status": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/McpServer/StandupStatus.McpServer.csproj",
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${input:github-token}"
+      }
+    },
+  },
+}
